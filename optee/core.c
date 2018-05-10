@@ -23,7 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <linux/tee_drv.h>
+#include "tee_drv.h"
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include "../include/linux/arm-smccc.h"

@@ -16,7 +16,7 @@
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
-#include <linux/tee_drv.h>
+#include "tee_drv.h"
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include "optee_private.h"

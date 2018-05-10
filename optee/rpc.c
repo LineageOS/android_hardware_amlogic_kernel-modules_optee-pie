@@ -17,7 +17,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/slab.h>
-#include <linux/tee_drv.h>
+#include "tee_drv.h"
 #include "optee_private.h"
 #include "optee_smc.h"
 
