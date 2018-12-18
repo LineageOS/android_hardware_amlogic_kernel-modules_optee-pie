@@ -379,7 +379,12 @@ optee_config_shm_memremap(optee_invoke_fn *invoke_fn, void **memremaped_shm)
 		return ERR_PTR(-EINVAL);
 	}
 
-	va = ioremap_cache(paddr, size);
+	/* For normal memory we already have a cacheable mapping. */
+	if (pfn_valid(__phys_to_pfn(paddr)))
+		va = (void __iomem *)__phys_to_virt(paddr);
+	else
+		va = ioremap_cache(paddr, size);
+
 	if (!va) {
 		pr_err("shared memory ioremap failed\n");
 		return ERR_PTR(-EINVAL);
