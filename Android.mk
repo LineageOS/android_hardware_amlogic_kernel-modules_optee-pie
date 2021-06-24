@@ -1,52 +1,45 @@
+#
+# Copyright (C) 2021 The LineageOS Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 LOCAL_PATH := $(call my-dir)
-ifeq ($(BOARD_KERNEL_VERSION), 4.9)
-KERNEL_DIR := kernel/common_4.9
-else ifeq ($(BOARD_KERNEL_VERSION), 3.14)
-KERNEL_DIR := kernel/common_3.14
-else
-KERNEL_DIR := common
-endif
-KERNEL_OUT_DIR := $(PRODUCT_OUT)/obj/KERNEL_OBJ
-ifeq ($(KERNEL_A32_SUPPORT), true)
-KERNEL_ARCH := arm
-KERNEL_DRIVER_CROSS_COMPILE := /opt/gcc-linaro-6.3.1-2017.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
-KERNEL_CONFIG=meson64_a32_defconfig
-else
-KERNEL_ARCH := arm64
-KERNEL_DRIVER_CROSS_COMPILE := aarch64-linux-gnu-
-KERNEL_CONFIG=meson64_defconfig
-endif
 
-OPTEE_MODULES := $(shell pwd)/$(PRODUCT_OUT)/obj/optee_modules
-include $(CLEAR_VARS)
-$(info $(shell if [ ! -d $(KERNEL_OUT_DIR) ]; then mkdir -p $(KERNEL_OUT_DIR); fi))
-
-$(info $(shell if [ ! -e $(KERNEL_OUT_DIR)/include/generated/autoconf.h ]; then $(MAKE) -C $(KERNEL_DIR) O=../$(KERNEL_OUT_DIR) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_DRIVER_CROSS_COMPILE) $(KERNEL_CONFIG); fi))
-
-
-$(info $(shell if [ ! -e $(KERNEL_OUT_DIR)/include/generated/autoconf.h ]; then $(MAKE) -C $(KERNEL_DIR) O=../$(KERNEL_OUT_DIR) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_DRIVER_CROSS_COMPILE) modules_prepare; fi))
-
-$(info $(shell if [ ! -d $(OPTEE_MODULES) ]; then mkdir -p $(OPTEE_MODULES); fi))
-$(info $(shell cp $(LOCAL_PATH)/* $(OPTEE_MODULES) -rfa))
-$(info $(shell $(MAKE) -C $(shell pwd)/$(KERNEL_OUT_DIR) M=$(OPTEE_MODULES) KERNEL_A32_SUPPORT=$(KERNEL_A32_SUPPORT) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_DRIVER_CROSS_COMPILE) modules))
-
+ifeq ($(TARGET_PREBUILT_KERNEL),)
+OPTEE_PATH := $(abspath $(call my-dir))
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := optee_armtz
-LOCAL_PREBUILT_MODULE_FILE := $(OPTEE_MODULES)/optee/optee_armtz.ko
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+
+LOCAL_MODULE        := optee-module
 LOCAL_MODULE_SUFFIX := .ko
-LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR)/lib
-LOCAL_STRIP_MODULE := false
-include $(BUILD_PREBUILT)
+LOCAL_MODULE_CLASS  := ETC
+LOCAL_MODULE_PATH   := $(TARGET_OUT_VENDOR)/lib/modules
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := optee
-LOCAL_PREBUILT_MODULE_FILE := $(OPTEE_MODULES)/optee.ko
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_MODULE_SUFFIX := .ko
-LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR)/lib
-LOCAL_STRIP_MODULE := false
-include $(BUILD_PREBUILT)
+_optee_intermediates := $(call intermediates-dir-for,$(LOCAL_MODULE_CLASS),$(LOCAL_MODULE))
+_optee_ko := $(_optee_intermediates)/$(LOCAL_MODULE)$(LOCAL_MODULE_SUFFIX)
+KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
+
+$(_optee_ko): $(KERNEL_OUT)/arch/$(KERNEL_ARCH)/boot/$(BOARD_KERNEL_IMAGE_NAME)
+	@mkdir -p $(dir $@)
+	@cp -R $(OPTEE_PATH)/* $(_optee_intermediates)/
+	$(hide) +$(KERNEL_MAKE_CMD) $(PATH_OVERRIDE) $(KERNEL_MAKE_FLAGS) -C $(KERNEL_OUT) M=$(abspath $(_optee_intermediates)) ARCH=$(TARGET_KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) modules
+	modules=$$(find $(_optee_intermediates) -type f -name '*.ko'); \
+	for f in $$modules; do \
+		$(KERNEL_TOOLCHAIN_PATH)strip --strip-unneeded $$f; \
+		cp $$f $(KERNEL_MODULES_OUT)/lib/modules; \
+	done;
+	touch $(_optee_intermediates)/optee-module.ko
+
+include $(BUILD_SYSTEM)/base_rules.mk
+endif
