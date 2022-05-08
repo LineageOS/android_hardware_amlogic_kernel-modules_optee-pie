@@ -21,25 +21,25 @@ OPTEE_PATH := $(abspath $(call my-dir))
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE        := optee-module
-LOCAL_MODULE_SUFFIX := .ko
+LOCAL_MODULE        := optee-module-p
+LOCAL_MODULE_STEM   := optee-module.ko
 LOCAL_MODULE_CLASS  := ETC
 LOCAL_MODULE_PATH   := $(TARGET_OUT_VENDOR)/lib/modules
 
-_optee_intermediates := $(call intermediates-dir-for,$(LOCAL_MODULE_CLASS),$(LOCAL_MODULE))
-_optee_ko := $(_optee_intermediates)/$(LOCAL_MODULE)$(LOCAL_MODULE_SUFFIX)
+_optee_p_intermediates := $(call intermediates-dir-for,$(LOCAL_MODULE_CLASS),$(LOCAL_MODULE))
+_optee_ko := $(_optee_p_intermediates)/$(LOCAL_MODULE_STEM)
 KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
 
 $(_optee_ko): $(KERNEL_OUT)/arch/$(KERNEL_ARCH)/boot/$(BOARD_KERNEL_IMAGE_NAME)
 	@mkdir -p $(dir $@)
-	@cp -R $(OPTEE_PATH)/* $(_optee_intermediates)/
-	$(hide) +$(KERNEL_MAKE_CMD) $(PATH_OVERRIDE) $(KERNEL_MAKE_FLAGS) -C $(KERNEL_OUT) M=$(abspath $(_optee_intermediates)) ARCH=$(TARGET_KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) modules
-	modules=$$(find $(_optee_intermediates) -type f -name '*.ko'); \
+	@cp -R $(OPTEE_PATH)/* $(_optee_p_intermediates)/
+	$(hide) +$(KERNEL_MAKE_CMD) $(PATH_OVERRIDE) $(KERNEL_MAKE_FLAGS) -C $(KERNEL_OUT) M=$(abspath $(_optee_p_intermediates)) ARCH=$(TARGET_KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) modules
+	modules=$$(find $(_optee_p_intermediates) -type f -name '*.ko'); \
 	for f in $$modules; do \
 		$(KERNEL_TOOLCHAIN_PATH)strip --strip-unneeded $$f; \
 		cp $$f $(KERNEL_MODULES_OUT)/lib/modules; \
 	done;
-	touch $(_optee_intermediates)/optee-module.ko
+	touch $(_optee_p_intermediates)/optee-module.ko
 
 include $(BUILD_SYSTEM)/base_rules.mk
 endif
